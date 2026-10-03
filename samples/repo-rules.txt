@@ -1,0 +1,13 @@
+REPO RULES (fill in from each repo's CONTRIBUTING.md)
+
+Repo 1: DevPath
+URL: PASTE_DEVPATH_URL_HERE
+Rule 1:
+Rule 2:
+Rule 3:
+
+Repo 2: mypy
+URL: https://github.com/python/mypy
+Rule 1:
+Rule 2:
+Rule 3:

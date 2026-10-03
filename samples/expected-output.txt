@@ -1,0 +1,21 @@
+INPUT: error-python.png + DevPath repo URL
+
+WHAT THE SCREENSHOT SHOWS:
+A Python NameError: the variable "undefined_variable" is used before it is defined.
+
+LIKELY CAUSE:
+The variable was never assigned, or is misspelled.
+
+WHERE TO LOOK:
+The file named in the traceback, at the line number shown.
+
+READY-TO-PASTE ISSUE:
+Title: NameError: name 'undefined_variable' is not defined
+Steps to reproduce: 1) ... 2) ...
+Expected: script runs. Actual: NameError. Include the full traceback.
+
+FIRST-PR CHECKLIST (check each item against the repo's real CONTRIBUTING.md):
+1. Get the issue assigned or claimed before opening a PR
+2. Create a branch following the repo's naming rule: [fill in]
+3. Run the repo's test command before pushing: [fill in]
+4. Follow the PR template
