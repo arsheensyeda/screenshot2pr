@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Screenshot2PR</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #0f1220;
+      color: #e8eaf2;
+      margin: 0;
+      padding: 32px 16px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 28px; }
+    .sub { color: #9aa0b8; margin: 0 0 24px; }
+    .card {
+      background: #181c2f;
+      border: 1px solid #272c47;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    input[type="file"], input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #323858;
+      background: #0f1220;
+      color: #e8eaf2;
+      font-size: 14px;
+    }
+    .field { margin-bottom: 16px; }
+    #preview {
+      display: none;
+      max-width: 100%;
+      max-height: 240px;
+      margin-top: 12px;
+      border-radius: 8px;
+      border: 1px solid #323858;
+    }
+    button {
+      background: #5b6cff;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    #results { white-space: pre-wrap; line-height: 1.5; }
+    .error { color: #ff8a8a; }
+    .hint { color: #9aa0b8; font-size: 13px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Screenshot2PR</h1>
+    <p class="sub">Upload a screenshot of an error and a GitHub repo. Get a ready-to-paste issue and a first-PR checklist.</p>
+
+    <div class="card">
+      <div class="field">
+        <label for="image">Error screenshot</label>
+        <input type="file" id="image" accept="image/png,image/jpeg,image/webp">
+        <img id="preview" alt="Screenshot preview">
+      </div>
+
+      <div class="field">
+        <label for="repo">GitHub repo URL (optional)</label>
+        <input type="text" id="repo" placeholder="https://github.com/owner/repo">
+        <div class="hint">Used to read the repo's contributing rules.</div>
+      </div>
+
+      <button id="go">Analyze</button>
+    </div>
+
+    <div class="card" id="results-card" style="display:none;">
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById("image");
+    const preview = document.getElementById("preview");
+    const repoInput = document.getElementById("repo");
+    const button = document.getElementById("go");
+    const resultsCard = document.getElementById("results-card");
+    const results = document.getElementById("results");
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+      } else {
+        preview.style.display = "none";
+      }
+    });
+
+    function show(text, isError) {
+      resultsCard.style.display = "block";
+      results.textContent = text;
+      results.className = isError ? "error" : "";
+    }
+
+    button.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        show("Please choose a screenshot first.", true);
+        return;
+      }
+
+      const form = new FormData();
+      form.append("image", file);
+      form.append("repo_url", repoInput.value);
+
+      button.disabled = true;
+      button.textContent = "Analyzing...";
+      show("Working on it...", false);
+
+      try {
+        const res = await fetch("/analyze", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) {
+          show(data.error || "Something went wrong.", true);
+        } else {
+          show(JSON.stringify(data, null, 2), false);
+        }
+      } catch (err) {
+        show("Could not reach the server. Is it running?", true);
+      } finally {
+        button.disabled = false;
+        button.textContent = "Analyze";
+      }
+    });
+  </script>
+</body>
+</html>
