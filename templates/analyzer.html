@@ -6,82 +6,53 @@
   <title>Screenshot2PR</title>
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: #0f1220;
-      color: #e8eaf2;
-      margin: 0;
-      padding: 32px 16px;
-    }
-    .wrap { max-width: 720px; margin: 0 auto; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #0f1220; color: #e8eaf2; margin: 0; padding: 32px 16px; }
+    .wrap { max-width: 760px; margin: 0 auto; }
     h1 { margin: 0 0 4px; font-size: 28px; }
+    h3 { margin: 0 0 10px; font-size: 16px; color: #aab1ff; }
     .sub { color: #9aa0b8; margin: 0 0 24px; }
-    .card {
-      background: #181c2f;
-      border: 1px solid #272c47;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-    }
+    .card { background: #181c2f; border: 1px solid #272c47; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     label { display: block; font-weight: 600; margin-bottom: 8px; }
-    input[type="file"], input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #323858;
-      background: #0f1220;
-      color: #e8eaf2;
-      font-size: 14px;
-    }
+    input[type="file"], input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #323858; background: #0f1220; color: #e8eaf2; font-size: 14px; }
     .field { margin-bottom: 16px; }
-    #preview {
-      display: none;
-      max-width: 100%;
-      max-height: 240px;
-      margin-top: 12px;
-      border-radius: 8px;
-      border: 1px solid #323858;
-    }
-    button {
-      background: #5b6cff;
-      color: white;
-      border: 0;
-      border-radius: 8px;
-      padding: 12px 20px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button:disabled { opacity: 0.6; cursor: wait; }
-    #results { white-space: pre-wrap; line-height: 1.5; }
-    .error { color: #ff8a8a; }
     .hint { color: #9aa0b8; font-size: 13px; margin-top: 6px; }
+    #preview { display: none; max-width: 100%; max-height: 240px; margin-top: 12px; border-radius: 8px; border: 1px solid #323858; }
+    button { background: #5b6cff; color: white; border: 0; border-radius: 8px; padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    button.small { padding: 6px 12px; font-size: 13px; margin-top: 10px; }
+    pre { white-space: pre-wrap; background: #0f1220; border: 1px solid #323858; border-radius: 8px; padding: 12px; margin: 8px 0 0; font-size: 13px; }
+    ul, ol { margin: 0; padding-left: 20px; line-height: 1.6; }
+    .banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; background: #1e2440; border: 1px solid #323858; font-size: 14px; }
+    .banner.warn { background: #3a2a14; border-color: #7a5a22; }
+    .error { color: #ff8a8a; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+    .badge.contributing { background: #12391f; color: #6ee7a0; }
+    .badge.general { background: #2a2f4a; color: #aab1ff; }
+    .type { font-weight: 700; font-size: 18px; }
+    .muted { color: #9aa0b8; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Screenshot2PR</h1>
-    <p class="sub">Upload a screenshot of an error and a GitHub repo. Get a ready-to-paste issue and a first-PR checklist.</p>
+    <p class="sub">Upload a screenshot of an error and a GitHub repo. Get a ready-to-paste issue and a first-PR checklist based on that repo's rules.</p>
 
     <div class="card">
       <div class="field">
         <label for="image">Error screenshot</label>
         <input type="file" id="image" accept="image/png,image/jpeg,image/webp">
+        <div class="hint">Tip: you can also paste a screenshot with Ctrl + V.</div>
         <img id="preview" alt="Screenshot preview">
       </div>
-
       <div class="field">
         <label for="repo">GitHub repo URL (optional)</label>
         <input type="text" id="repo" placeholder="https://github.com/owner/repo">
         <div class="hint">Used to read the repo's contributing rules.</div>
       </div>
-
       <button id="go">Analyze</button>
     </div>
 
-    <div class="card" id="results-card" style="display:none;">
-      <div id="results"></div>
-    </div>
+    <div id="out"></div>
   </div>
 
   <script>
@@ -89,31 +60,106 @@
     const preview = document.getElementById("preview");
     const repoInput = document.getElementById("repo");
     const button = document.getElementById("go");
-    const resultsCard = document.getElementById("results-card");
-    const results = document.getElementById("results");
+    const out = document.getElementById("out");
 
-    fileInput.addEventListener("change", () => {
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text !== undefined) n.textContent = text;
+      return n;
+    }
+    function card(title) {
+      const c = el("div", "card");
+      c.appendChild(el("h3", "", title));
+      out.appendChild(c);
+      return c;
+    }
+    function showMessage(text, isError) {
+      out.innerHTML = "";
+      const c = el("div", "card");
+      c.appendChild(el("div", isError ? "error" : "muted", text));
+      out.appendChild(c);
+    }
+
+    function showPreview() {
       const file = fileInput.files[0];
-      if (file) {
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-      } else {
-        preview.style.display = "none";
+      if (file) { preview.src = URL.createObjectURL(file); preview.style.display = "block"; }
+      else { preview.style.display = "none"; }
+    }
+    fileInput.addEventListener("change", showPreview);
+
+    document.addEventListener("paste", (e) => {
+      const items = e.clipboardData ? e.clipboardData.items : [];
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const dt = new DataTransfer();
+          dt.items.add(item.getAsFile());
+          fileInput.files = dt.files;
+          showPreview();
+          break;
+        }
       }
     });
 
-    function show(text, isError) {
-      resultsCard.style.display = "block";
-      results.textContent = text;
-      results.className = isError ? "error" : "";
+    function render(d) {
+      out.innerHTML = "";
+
+      if (d.offline_demo) {
+        out.appendChild(el("div", "banner warn", "The AI service could not be reached, so this is a saved demo result, not an analysis of your screenshot."));
+      }
+      const notes = {
+        ok: `Read the contributing rules of ${d.repo} (${d.rules_source}).`,
+        no_file: `No CONTRIBUTING file found in ${d.repo}, so the checklist is general advice.`,
+        invalid: "That repo URL wasn't recognised, so the checklist is general advice.",
+        none: "No repo given, so the checklist is general advice.",
+      };
+      out.appendChild(el("div", "banner", notes[d.repo_status] || ""));
+
+      if (!d.is_error) {
+        const c = card("This doesn't look like an error");
+        c.appendChild(el("div", "", d.summary || "Try a screenshot that shows an error message or a failed command."));
+        return;
+      }
+
+      const s = card("What the screenshot shows");
+      s.appendChild(el("div", "type", d.error_type));
+      s.appendChild(el("p", "", d.summary));
+      if (d.confidence) s.appendChild(el("div", "muted", "Confidence: " + d.confidence));
+
+      const c = card("Likely cause");
+      c.appendChild(el("div", "", d.likely_cause));
+
+      if (d.where_to_look.length) {
+        const w = card("Where to look");
+        const ul = el("ul");
+        d.where_to_look.forEach(x => ul.appendChild(el("li", "", x)));
+        w.appendChild(ul);
+      }
+
+      const i = card("Ready-to-paste GitHub issue");
+      i.appendChild(el("div", "type", d.issue.title));
+      i.appendChild(el("pre", "", d.issue.body));
+      const copy = el("button", "small", "Copy issue");
+      copy.addEventListener("click", async () => {
+        await navigator.clipboard.writeText("# " + d.issue.title + "\n\n" + d.issue.body);
+        copy.textContent = "Copied!";
+        setTimeout(() => (copy.textContent = "Copy issue"), 1500);
+      });
+      i.appendChild(copy);
+
+      const p = card("First-PR checklist");
+      const ol = el("ol");
+      d.pr_checklist.forEach(item => {
+        const li = el("li", "", item.step);
+        li.appendChild(el("span", "badge " + item.source, item.source === "contributing" ? "from CONTRIBUTING" : "general"));
+        ol.appendChild(li);
+      });
+      p.appendChild(ol);
     }
 
     button.addEventListener("click", async () => {
       const file = fileInput.files[0];
-      if (!file) {
-        show("Please choose a screenshot first.", true);
-        return;
-      }
+      if (!file) { showMessage("Please choose or paste a screenshot first.", true); return; }
 
       const form = new FormData();
       form.append("image", file);
@@ -121,18 +167,15 @@
 
       button.disabled = true;
       button.textContent = "Analyzing...";
-      show("Working on it...", false);
+      showMessage("Gemma 4 is reading your screenshot. This can take 10-30 seconds.", false);
 
       try {
         const res = await fetch("/analyze", { method: "POST", body: form });
         const data = await res.json();
-        if (!res.ok) {
-          show(data.error || "Something went wrong.", true);
-        } else {
-          show(JSON.stringify(data, null, 2), false);
-        }
+        if (!res.ok) showMessage(data.error || "Something went wrong.", true);
+        else render(data);
       } catch (err) {
-        show("Could not reach the server. Is it running?", true);
+        showMessage("Could not reach the server. Is it running?", true);
       } finally {
         button.disabled = false;
         button.textContent = "Analyze";
